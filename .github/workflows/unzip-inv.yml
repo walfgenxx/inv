@@ -1,0 +1,56 @@
+name: Unzip Repository File
+
+on:
+  # Manually trigger the workflow
+  workflow_dispatch:
+    inputs:
+      destination:
+        description: 'Directory to unzip files to'
+        required: true
+        default: 'gold'
+      commit_files:
+        description: 'Commit unzipped files to repository'
+        required: true
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+
+jobs:
+  unzip:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Add this line to grant write permissions
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          lfs: true
+          token: ${{ secrets.GITHUB_TOKEN }}  # Use GitHub token for authentication
+      
+      - name: Verify zip file existence
+        run: |
+          if [ ! -f "HYIPManagerPro_ion(1).zip" ]; then
+            echo "Error: HYIPManagerPro_ion(1).zip not found"
+            exit 1
+          fi
+          echo "Found HYIPManagerPro_ion(1).zip ($(du -h HYIPManagerPro_ion(1).zip | cut -f1))"
+      
+      - name: Create destination directory
+        run: mkdir -p ${{ github.event.inputs.destination }}
+      
+      - name: Unzip file
+        run: unzip -o HYIPManagerPro_ion(1).zip -d ${{ github.event.inputs.destination }}
+      
+      - name: List extracted files
+        run: find ${{ github.event.inputs.destination }} -type f -name "*.php" | head -n 10
+      
+      - name: Commit unzipped files
+        if: ${{ github.event.inputs.commit_files == 'true' }}
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add ${{ github.event.inputs.destination }}
+          git commit -m "Add unzipped content from HYIPManagerPro_ion(1).zip" || echo "No changes to commit"
+          git push
